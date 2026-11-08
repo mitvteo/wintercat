@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="WINTERCAT">
+	<meta property="og:url" content="">
+	<meta property="og:image" content="">
+	<meta property="og:description" content="a short puzzle game">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"
+		rel="stylesheet">
+	<link rel="stylesheet" href="https://pyscript.net/releases/2026.7.3/core.css" />
+	<script type="module" src="https://pyscript.net/releases/2026.7.3/core.js"></script>
+	<style>
+		body {
+			background-color: #1c222b;
+			margin: 2rem;
+			overflow-x: hidden;
+		}
+
+		p {
+			max-width: 100vw;
+			color: #fff;
+			font-family: Consolas, 'DM Mono';
+			font-feature-settings: "calt" on;
+			overflow: hidden;
+			margin: 0;
+			font-size: 1rem;
+			height: 1.15rem;
+			/* 1.25 is 1 px too tall always :< */
+		}
+
+		#loading {
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100vw;
+			height: 100vh;
+			background: #00000088;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			flex-direction: column;
+			opacity: 1;
+			transform: scale(1);
+			transition: opacity 0.75s cubic-bezier(0.215, 0.610, 0.355, 1), transform 0.75s cubic-bezier(0.215, 0.610, 0.355, 1);
+		}
+
+		#loading.hidden {
+			opacity: 0;
+			transform: scale(1.2);
+		}
+
+		#loading.gone {
+			display: none;
+		}
+
+		#loading img {
+			width: 30%;
+			height: auto;
+		}
+
+		#loading p {
+			margin: 2rem;
+		}
+
+		a {
+			text-decoration: none;
+			color: #5af;
+			font-weight: bold;
+			text-shadow: 0 0 12px #5af8;
+			margin-left: 3rem;
+			margin-right: 3rem;
+		}
+
+		p:has(a) {
+			font-size: 1.5rem;
+			height: 1.725rem;
+		}
+
+		p.center {
+			width: 100%;
+			text-align: center;
+		}
+
+		p.faint {
+			opacity: 0.5;
+		}
+	</style>
+	<title>Wintercat</title>
+</head>
+
+<body>
+	<div id="loading">
+		<img src="logo.png">
+		<p>loading...</p>
+	</div>
+	<pre id="output"></pre>
+	<script>
+		// sooooo pyscript's terminal freaks out SO MUCH whenever i try to use it
+		// idk how folktale's website does it AT ALL 
+		// (i even tried copying it line by line but it still only broke for this website)
+		// but to work around this i have these functions
+		// apologies for bad ux.... especially with the inputs
+		const lines = [];
+		let cursor = 0;
+		function check() {
+			if (!lines[cursor]) {
+				lines[cursor] = document.createElement('p');
+				output.appendChild(lines[cursor]);
+			}
+		}
+		function ending() {
+			cursor += 1;
+			check();
+			lines[cursor].classList.add('center');
+			lines[cursor].innerHTML = '<a href="">View the GitHub repository</a><a href="https://mitvteo.github.io/">Check out my website!</a>';
+			cursor += 1;
+			check();
+			lines[cursor].classList.add('faint');
+			lines[cursor].classList.add('center');
+			lines[cursor].textContent = "You can scroll up now.";
+			update();
+		}
+		function jsprint(text, end = "\n", flush) {
+			check();
+			text = text.replaceAll("\u001b[?25l", "")
+			text = text.replaceAll("\u001b[?25h", "")
+			while (true) {
+				let finished = true;
+				if (text.startsWith("\n")) {
+					cursor += 1;
+					check();
+					finished = false;
+					text = text.replace("\n", "")
+				}
+				if (text.includes("\u001b[A\u001b[K")) {
+					cursor -= 1;
+					check();
+					lines[cursor].textContent = "";
+					finished = false;
+					text = text.replace("\u001b[A\u001b[K", "")
+				}
+				if (finished) break;
+			}
+			lines[cursor].textContent = [lines[cursor].textContent, text].join("")
+			if (end == "\n") {
+				cursor += 1;
+				check();
+			}
+			update();
+		}
+		function jsinput(text) {
+			update();
+			const response = prompt();
+			cursor += 1;
+			check();
+			return response ?? "";
+		}
+		const output = document.getElementById('output');
+		function update() {
+			window.scrollTo(0, document.body.scrollHeight);
+		}
+		function loadinghide() {
+			document.getElementById('loading').classList.add('hidden');
+			setTimeout(() => {
+				document.getElementById('loading').classList.add('gone')
+			}, 750);
+		}
+		(async () => {
+			const script = document.createElement('script');
+			let src = await (await fetch('main.py')).text();
+			console.log(src.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\r\n', '\\n').replaceAll('input(', 'input('));
+			const blob = new Blob([src.replaceAll('input(', 'await input(').replaceAll('def ', 'async def ')], { type: 'text/plain' });
+			const blobUrl = URL.createObjectURL(blob);
+			const sanitized = src.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\r\n', '\\n').replaceAll('\n', '\\n');
+			window.s = sanitized;
+			script.id = "terminal";
+			script.type = 'py';
+			script.setAttribute("packages", "{'packages':[]}");
+			// js bootstrap
+			script.textContent = `from js import jsprint, jsinput, loadinghide, ending
+
+def print(text="", end="\\n", flush=False):
+	jsprint(text, end, flush)
+def input(text=""):
+	return jsinput(text)
+
+globals()["isJS"] = True
+
+exec(compile("${sanitized}", "main.py", "exec"))`;
+			document.body.append(script);
+
+		})();
+	</script>
+</body>
+
+</html>
